@@ -1,39 +1,52 @@
 # Vertex AI Function Calling Chat App
 
-This is a full-stack demo of a chat interface that supports function calling using Google Vertex AI + a product search API.
+This is a modular full-stack demo of a conversational shopping assistant with function calling powered by Vertex AI + a custom product search API.
 
 ---
 
 ## 🔧 Tech Stack
 
-* **Frontend**: Next.js + Tailwind (with `shadcn/ui` components)
-* **Backend**: FastAPI using Vertex AI SDK
-* **LLM**: `gemini-2.0-flash-001` with intent classification and chat response
+- **Frontend**: Next.js + Tailwind (using `shadcn/ui`, drag-and-drop, and carousel components)
+- **Backend**: FastAPI with modular intent-routing and Gemini function calling
+- **LLM**: `gemini-2.0-flash-001`
 
 ---
 
 ## 🚀 Local Deployment Instructions
 
-### 1. Backend Setup
+### 1. Clone and Setup
 
 ```bash
-cd vertex-chat-app/backend
+git clone https://github.com/abdo1Hassan/GenUI-Poc.git
+cd GenUI-Poc
+```
+
+---
+
+### 2. Backend Setup
+
+```bash
+cd backend
 python3 -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
-uvicorn backend.main:app --reload --port 8182
+
+# Run the server
+PYTHONPATH=. uvicorn backend.main:app --reload --port 8182
 ```
 
-* Ensure port 8182 is free
-* Authenticate with Google Cloud:
+- Ensure port `8182` is free
+- Authenticate with Google Cloud:
 
 ```bash
 gcloud auth application-default login
 ```
 
-* Confirm project access to `gemini-2.0-flash-001`
+- Project must have access to the `gemini-2.0-flash-001` model
 
-### 2. Frontend Setup
+---
+
+### 3. Frontend Setup
 
 ```bash
 cd ../frontend
@@ -41,56 +54,57 @@ npm install
 npm run dev
 ```
 
-* App runs on [http://localhost:3000](http://localhost:3000)
+- App runs at [http://localhost:3000](http://localhost:3000)
 
 ---
 
-## 🌐 Endpoints
+## 🌐 API Endpoints
 
-* `POST /chat`: Handles query, detects intent, generates response or fetches products
-* `GET /health`: Health check endpoint
+- `POST /chat`: Main chat endpoint that routes based on intent
+- `GET /health`: Basic health check
+
+---
+
+## 💡 Git Workflow
+
+For contributing:
+
+```bash
+git add .              # stage all changes
+git commit -m "your msg"  # commit with message
+git push               # push to main (or a feature branch)
+```
+
+If needed:
+```bash
+git checkout -b feature/my-feature   # create and switch to new branch
+git push -u origin feature/my-feature
+```
+
+---
+
+## 🧠 Backend Architecture
+
+```
+backend/
+├── main.py                # Entry point
+├── routes/
+│   └── chat.py            # POST /chat route
+├── intents/               # Intent-specific logic
+│   ├── intent_router.py
+│   ├── chitchat.py
+│   ├── find_product.py
+│   ├── compare.py
+│   └── reassure.py
+├── services/              # External service integration
+│   ├── gemini.py          # Gemini LLM usage
+│   └── search.py          # Product search API logic
+```
 
 ---
 
 ## ⚠️ Notes
 
-* Assumes a working Decathlon Search API at `http://10.60.21.248:8000/search`
-* Update the API URL in `backend/constants.py` if needed
-
----
-
-## 🗃️ Version Control with Git
-
-### 📅 Clone the Repository
-
-```bash
-git clone https://github.com/abdo1Hassan/GenUI-Poc.git
-cd GenUI-Poc
-```
-
-### 🖕 Create a New Branch
-
-```bash
-git checkout -b feature/your-feature-name
-```
-
-> Use meaningful names, e.g., `feature/compare-ui` or `fix/search-bug`
-
-### ✅ Commit Your Changes
-
-```bash
-git add .
-git commit -m "✨ Add product comparison carousel"
-```
-
-### 👄 Push to GitHub
-
-```bash
-git push origin feature/your-feature-name
-```
-
-### 🔀 Create a Pull Request
-
-* Open your GitHub repo and create a PR from your branch into `main`
-
----
+- Make sure the Decathlon Search API is available at `http://10.60.21.248:8000/search`
+- Update the endpoint in `services/search.py` if needed
+- If you're running into import errors, make sure to launch with `PYTHONPATH=.`
