@@ -1,0 +1,284 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
+  background-color: #ffffff;
+  border-radius: 48px 48px 0 0;
+  overflow: hidden;
+  font-family: "Decathlon Text", Arial, sans-serif;
+}
+
+.messageList {
+  flex: 1;
+  overflow-y: auto;
+  padding: 24px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.messageGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 0 24px;
+  width: 100%;
+}
+
+.senderLabel {
+  color: rgba(97, 97, 97, 1);
+  font-size: 12px;
+  line-height: 133.33%;
+}
+
+.message {
+  display: flex;
+  flex-direction: column;
+  max-width: 80%;
+  padding: 16px 20px;
+  border-radius: 20px;
+  line-height: 1.43;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.userMessage {
+  align-self: flex-end;
+  background-color: #ffcd4e;
+  color: #000000;
+}
+
+.botMessage {
+  align-self: flex-start;
+  background-color: rgba(245, 244, 245, 1);
+  color: #000000;
+}
+
+.specialContent {
+  width: 100%;
+  margin-top: 16px;
+  border-radius: 16px;
+  overflow: hidden;
+}
+
+.inputContainer {
+  padding: 32px 24px;
+  background: white;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  overflow: hidden;
+}
+
+.inputForm {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 20px;
+  width: 100%;
+  max-width: 600px;
+}
+
+.input {
+  flex: 1;
+  min-width: 0;
+  height: 48px;
+  background-color: rgba(245, 244, 245, 1);
+  padding: 0 16px;
+  border: none;
+  border-radius: 999px;
+  font-size: 12px;
+  color: rgba(97, 97, 97, 1);
+  resize: none;
+  line-height: 48px;
+}
+
+.input:focus {
+  outline: none;
+}
+
+.sendButton {
+  background-color: rgba(245, 244, 245, 1);
+  width: 42px;
+  height: 42px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  border: none;
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.sendButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.loadingDots {
+  display: flex;
+  gap: 4px;
+}
+
+.loadingDots span {
+  animation: pulse 1.4s infinite ease-in-out;
+  animation-fill-mode: both;
+}
+
+.loadingDots span:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.loadingDots span:nth-child(3) {
+  animation-delay: 0.4s;
+}
+
+.productCarousel {
+  width: 100%;
+  overflow-x: auto;
+  padding: 16px 24px;
+  display: flex;
+  gap: 12px;
+  scroll-snap-type: x mandatory;
+}
+
+.productCard {
+  scroll-snap-align: start;
+  min-width: 140px;
+  background-color: white;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  cursor: grab;
+  transition: transform 0.2s, opacity 0.2s;
+}
+
+.productCard:active {
+  cursor: grabbing;
+}
+
+.productImage {
+  width: 100%;
+  height: 100px;
+  object-fit: cover;
+}
+
+.productInfo {
+  padding: 12px;
+}
+
+.productTitle {
+  font-size: 12px;
+  font-weight: 600;
+  margin-bottom: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.productMeta {
+  font-size: 10px;
+  color: rgba(97, 97, 97, 1);
+}
+
+.productTags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+  padding: 0 24px;
+}
+
+.productTag {
+  background-color: #ffcd4e;
+  color: #000000;
+  font-size: 12px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.removeTag {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background-color: rgba(0, 0, 0, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.dragIndicator {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background-color: #ffcd4e;
+  color: #000000;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  pointer-events: none;
+  z-index: 1000;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 0.2;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  .container {
+    background-color: #1a1a1a;
+  }
+
+  .botMessage {
+    background-color: #333;
+    color: #f0f0f0;
+  }
+
+  .userMessage {
+    background-color: rgba(255, 205, 78, 0.9);
+    color: #000;
+  }
+
+  .senderLabel {
+    color: rgba(200, 200, 200, 0.8);
+  }
+
+  .inputContainer {
+    background: #1a1a1a;
+  }
+
+  .input {
+    background-color: #333;
+    color: white;
+  }
+
+  .sendButton {
+    background-color: #333;
+    color: white;
+  }
+
+  .productCard {
+    background-color: #333;
+  }
+
+  .productMeta {
+    color: rgba(200, 200, 200, 0.8);
+  }
+}

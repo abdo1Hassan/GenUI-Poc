@@ -39,7 +39,7 @@ Respond with one intent label only.
 def generate_response(query: str) -> str:
     try:
         response = model.generate_content(
-            f"You are a helpful assistant. Respond to: {query}"
+            f"You are a helpful a sports retailer ecom assistant, stay on topic, introduce yourself when needed. Respond to: {query}"
         )
         return response.text.strip()
     except Exception as e:

@@ -1,0 +1,293 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  width: 100%;
+  padding: 24px 16px;
+  background-color: #f5f4f5;
+}
+
+.title {
+  font-size: 20px;
+  font-weight: 600;
+  margin-bottom: 16px;
+}
+
+.results {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.searchQuery {
+  font-weight: 600;
+  font-size: 18px;
+  line-height: 130%;
+  color: #000000;
+  margin-bottom: 8px;
+  text-align: center;
+}
+
+.selectedChipHeading {
+  font-weight: 600;
+  font-size: 18px;
+  line-height: 130%;
+  color: #000000;
+  margin-bottom: 16px;
+  text-align: left;
+  padding-left: 4px;
+}
+
+.chipRow {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 10px;
+  overflow-x: auto;
+  padding-bottom: 8px;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none; /* Firefox */
+}
+
+.chipRow::-webkit-scrollbar {
+  display: none; /* Chrome, Safari, Edge */
+}
+
+.chip {
+  background-color: rgba(255, 255, 255, 1);
+  display: flex;
+  align-items: center;
+  padding: 12px 24px; /* Increased padding for more space between content and outline */
+  border-radius: 999px;
+  overflow: hidden;
+  flex-shrink: 0;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: 2px solid transparent;
+  min-width: 120px; /* Ensure chips are wider */
+}
+
+.primaryChip {
+  border-color: #ffcd4e;
+  background-color: #ffcd4e;
+  box-shadow: 0 0 4px rgba(255, 205, 78, 0.6);
+}
+
+.primaryChip .chipLabel {
+  font-weight: 600;
+}
+
+.chipContent {
+  display: flex;
+  align-items: center;
+  padding: 4px; /* Added padding */
+}
+
+.chipImage {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.chipImage img {
+  width: 40px;
+  height: 40px;
+  object-fit: cover;
+}
+
+.chipLabel {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 0 4px; /* Minimal horizontal padding, let .chip handle spacing */
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 130%;
+  color: rgba(0, 0, 0, 1);
+}
+
+.productGrid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+  width: 100%;
+}
+
+.productsContainer {
+  width: 100%;
+}
+
+.productGridFrame {
+  background-color: white;
+  padding: 16px;
+  border-radius: 40px;
+}
+
+.productCard {
+  background-color: white;
+  border-radius: 8px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid white;
+  cursor: grab;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.productCard:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.productCard:active {
+  cursor: grabbing;
+  transform: scale(0.98);
+}
+
+.productImage {
+  width: 100%;
+  padding-top: 100%; /* This creates a 1:1 aspect ratio */
+  background-color: #f5f5f5;
+  position: relative;
+}
+
+.productInfo {
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.productTitle {
+  font-weight: 500;
+  font-size: 14px;
+  line-height: 130%;
+  color: #000000;
+}
+
+.sectionTitle {
+  font-weight: 600;
+  font-size: 16px;
+  line-height: 130%;
+  color: #000000;
+  margin-bottom: 8px;
+}
+
+.page .search-results-page {
+  background-color: #ffffff;
+}
+
+.page body,
+.page #root {
+  background-color: #ffffff;
+}
+
+.productPrice {
+  font-weight: 600;
+  font-size: 14px;
+  color: #000000;
+}
+
+.dragImage {
+  position: absolute;
+  top: -1000px;
+  left: -1000px;
+  z-index: 9999;
+  pointer-events: none;
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  .chip {
+    background-color: rgba(50, 50, 50, 1);
+  }
+
+  .chipLabel {
+    color: rgba(255, 255, 255, 0.9);
+  }
+
+  .primaryChip {
+    border-color: #ffcd4e;
+    background-color: rgba(50, 50, 50, 1);
+  }
+
+  .productGridFrame {
+    background-color: #333;
+    border: 1px solid #444;
+  }
+
+  .productCard {
+    background-color: #333;
+    border: 1px solid #444;
+  }
+
+  .productTitle,
+  .productPrice {
+    color: #ffffff;
+  }
+
+  .selectedChipHeading {
+    color: #ffffff;
+  }
+
+  .page body,
+  .page #root,
+  .page .search-results-page {
+    background-color: #222;
+  }
+}
+
+.slideOut {
+  animation: slideDownFadeOut 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards !important;
+  padding: 8px 16px !important;
+  border-radius: 12px !important;
+  box-sizing: border-box;
+}
+.slideIn {
+  animation: slideDownFadeIn 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  padding: 8px 16px !important;
+  border-radius: 12px !important;
+  box-sizing: border-box;
+}
+
+@keyframes slideDownFadeOut {
+  0% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(40px); /* Only slide, no scale */
+  }
+}
+@keyframes slideDownFadeIn {
+  0% {
+    opacity: 0;
+    transform: translateY(-40px); /* Only slide, no scale */
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Remove any transition or animation on transform/scale for .slideOut, .slideIn, and their children */
+.slideOut *,
+.slideIn * {
+  transition: none !important;
+  animation: none !important;
+  font-size: 12px !important;
+  padding: 0 !important;
+  transform: scale(1) !important;
+  box-shadow: none !important;
+}
+
+/* Add more padding around chip content during animation */
+.slideOut > div,
+.slideIn > div {
+  padding: 8px 16px !important;
+  border-radius: 8px !important;
+}

@@ -1,0 +1,31 @@
+/* Slide in from top */
+.slideIn {
+  animation: slideInDown 0.3s forwards;
+}
+
+/* Slide out to bottom */
+.slideOut {
+  animation: slideOutDown 0.3s forwards;
+}
+
+@keyframes slideInDown {
+  from {
+    transform: translateY(-100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slideOutDown {
+  from {
+    transform: translateY(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+}
