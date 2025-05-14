@@ -1,7 +1,13 @@
 # backend/services/products.py
-def extract_products_from_response(search_response: dict, max_items: int = 10) -> list:
+def extract_products_from_response(search_response: dict, max_items: int = 10, include_metadata: bool = False) -> list | tuple:
+    """
+    Extracts product list from the nested search response.
+    Optionally includes metadata from llm_output for enhanced query insights.
+    """
     items = search_response.get("data", {}).get("blocks", {}).get("items", [])
     products = []
+    metadata = search_response.get("stats", {}).get("llm_output", {}) if include_metadata else {}
+
     for product in items:
         models = product.get("models", [])
         brand = product.get("brand", {}).get("label", "")
@@ -27,6 +33,6 @@ def extract_products_from_response(search_response: dict, max_items: int = 10) -
             })
 
             if len(products) >= max_items:
-                return products
+                return (products, metadata) if include_metadata else products
 
-    return products
+    return (products, metadata) if include_metadata else products

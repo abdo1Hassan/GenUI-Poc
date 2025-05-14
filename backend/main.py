@@ -2,8 +2,18 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from backend.routes.chat import router as chat_router
+import logging
+
+# Set up root logger to print to stdout
+logging.basicConfig(
+    level=logging.INFO,  # Or DEBUG for more verbosity
+    format="%(levelname)s:%(name)s:%(message)s"
+)
 
 app = FastAPI()
+logger = logging.getLogger(__name__)
+logger.info("🚀 FastAPI backend started.")
+
 
 app.add_middleware(
     CORSMiddleware,

@@ -1,9 +1,17 @@
 # backend/services/search.py
 import requests
+import logging
+logger = logging.getLogger(__name__)
+
 
 SEARCH_API_URL = "http://10.60.21.248:8000/search"
 
-def fetch_products(query: str, max_items: int = 10) -> list:
+def fetch_products(query: str, max_items: int = 10, return_metadata: bool = False) -> list | tuple:
+    """
+    Queries the Decathlon Search API and returns a list of products.
+    Optionally includes llm_output metadata when return_metadata is True.
+    Logs both product results and metadata.
+    """
     response = requests.post(
         SEARCH_API_URL,
         headers={"Content-Type": "application/json"},
@@ -11,7 +19,14 @@ def fetch_products(query: str, max_items: int = 10) -> list:
         timeout=10,
     )
     response.raise_for_status()
-    data = response.json().get("data", {}).get("blocks", {}).get("items", [])
+    response_json = response.json()
+
+    data = response_json.get("data", {}).get("blocks", {}).get("items", [])
+    metadata = response_json.get("stats", {}).get("llm_output", {}) if return_metadata else {}
+
+    logger.info(f"🛍️ Found {len(data)} raw product blocks from API for query: '{query}'")
+    if metadata:
+        logger.info(f"📊 Metadata extracted: {metadata}")
 
     results = []
     for item in data:
@@ -28,7 +43,7 @@ def fetch_products(query: str, max_items: int = 10) -> list:
             url = model.get("url", fallback_url)
             sizes = model.get("availableSizes", [])
 
-            results.append({
+            product = {
                 "title": title,
                 "price": price,
                 "image": image,
@@ -36,8 +51,11 @@ def fetch_products(query: str, max_items: int = 10) -> list:
                 "brand": brand,
                 "nature": nature,
                 "capacity": sizes,
-            })
+            }
+            logger.info(f"🧾 Parsed product: {product}")
+            results.append(product)
 
             if len(results) >= max_items:
-                return results
-    return results
+                return (results, metadata) if return_metadata else results
+
+    return (results, metadata) if return_metadata else results

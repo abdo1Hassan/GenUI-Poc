@@ -1,21 +1,25 @@
 # backend/intents/find_product.py
-"""
-Handles product discovery queries using the internal search API.
-"""
+from services.search import fetch_products
+import logging
 
-from backend.services.search import fetch_products
+logger = logging.getLogger("main")
 
 async def handle_find_product(query: str, intent: str):
     try:
-        products = fetch_products(query)
+        products, metadata = fetch_products(query, return_metadata=True)
+        logger.info(f"📦 Returning {len(products)} products with metadata")
+
         return {
             "result": f"Found {len(products)} products for '{query}'.",
             "products": products,
+            "metadata": metadata,
             "intent": intent,
         }
-    except Exception:
+    except Exception as e:
+        logger.error(f"❌ Product fetch failed: {e}")
         return {
             "result": "Search failed due to a backend error.",
             "products": [],
+            "metadata": {},
             "intent": intent,
         }
