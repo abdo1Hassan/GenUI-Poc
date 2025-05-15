@@ -2,6 +2,7 @@
 
 import type React from "react"
 import { useEffect, useState } from "react"
+import ReactDOM from "react-dom"
 import styles from "./SearchResults.module.css"
 import transitions from "./transitions.module.css"
 import { useMobile } from "../../hooks/use-mobile"
@@ -29,14 +30,100 @@ const SearchResults: React.FC<SearchResultsProps> = ({ products }) => {
   const [draggedProduct, setDraggedProduct] = useState<Product | null>(null)
   const isMobile = useMobile()
 
+  // Track if a drag is in progress
+  const [isDragging, setIsDragging] = useState(false)
+
+  // Long press drag state
+  const [longPressTimer, setLongPressTimer] = useState<NodeJS.Timeout | null>(null)
+  const [touchStartPosition, setTouchStartPosition] = useState<{ x: number; y: number } | null>(null)
+
+  // Long press threshold (ms)
+  const LONG_PRESS_THRESHOLD = 400
+  const MOVE_TOLERANCE = 10 // px
+
+  // Track selected products for multi-select
+  const [selectedProducts, setSelectedProducts] = useState<Product[]>([])
+
+  const handleProductSelect = (product: Product) => {
+    setSelectedProducts(prev => {
+      const alreadySelected = prev.some(p => p.id === product.id)
+      if (alreadySelected) {
+        return prev.filter(p => p.id !== product.id)
+      } else {
+        return [...prev, product]
+      }
+    })
+  }
+
+  // Helper: ensure product is selected before drag
+  const ensureProductSelected = (product: Product) => {
+    setSelectedProducts(prev => {
+      if (prev.some(p => p.id === product.id)) return prev
+      return [...prev, product]
+    })
+  }
+
+  // Handle touch start for long-press drag
+  const handleTouchStart = (product: Product, e?: React.TouchEvent) => {
+    ensureProductSelected(product)
+    if (e) {
+      const touch = e.touches[0]
+      setTouchStartPosition({ x: touch.clientX, y: touch.clientY })
+    }
+    const timer = setTimeout(() => {
+      // Only dispatch if still holding
+      let dragProducts: Product[] = []
+      if (selectedProducts.length > 1 && selectedProducts.some(p => p.id === product.id)) {
+        dragProducts = selectedProducts
+      } else {
+        dragProducts = [product]
+      }
+      const touchDragEvent = new CustomEvent("touchDragStart", {
+        detail: { products: dragProducts },
+      })
+      window.dispatchEvent(touchDragEvent)
+      setDraggedProduct(product)
+      setLongPressTimer(null)
+    }, LONG_PRESS_THRESHOLD)
+    setLongPressTimer(timer)
+  }
+
+  // Handle touch move: cancel if moved too far
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (touchStartPosition) {
+      const touch = e.touches[0]
+      const dx = touch.clientX - touchStartPosition.x
+      const dy = touch.clientY - touchStartPosition.y
+      if (Math.sqrt(dx * dx + dy * dy) > MOVE_TOLERANCE) {
+        if (longPressTimer) {
+          clearTimeout(longPressTimer)
+          setLongPressTimer(null)
+        }
+      }
+    }
+  }
+
+  // Handle touch end: cancel timer if not triggered
+  const handleTouchEnd = () => {
+    if (longPressTimer) {
+      clearTimeout(longPressTimer)
+      setLongPressTimer(null)
+    }
+    setTouchStartPosition(null)
+    setDraggedProduct(null)
+  }
+
   // Extract unique natures from products to use as categories
   const productNatures = Array.from(new Set(products.map((p) => p.nature || "Other")))
 
-  // Create chips from product natures
-  const chips = productNatures.map((nature) => ({
-    image: `/placeholder.svg?height=40&width=40&query=${encodeURIComponent(nature)}`,
-    label: nature,
-  }))
+  // Create chips from product natures, using the first product's image for each nature
+  const chips = productNatures.map((nature) => {
+    const firstProduct = products.find((p) => (p.nature || "Other") === nature)
+    return {
+      image: firstProduct?.image || "/placeholder.svg",
+      label: nature,
+    }
+  })
 
   // Handler for chip selection
   const handleChipClick = (chipLabel: string) => {
@@ -47,6 +134,9 @@ const SearchResults: React.FC<SearchResultsProps> = ({ products }) => {
 
   // Handler for product click
   const handleProductClick = (index: number) => {
+    if (isDragging) return
+    const focusChatEvent = new CustomEvent("focusChat")
+    window.dispatchEvent(focusChatEvent)
     setSelectedProductIndex(index)
   }
 
@@ -88,7 +178,7 @@ const SearchResults: React.FC<SearchResultsProps> = ({ products }) => {
 
   // Set first chip as selected by default
   useEffect(() => {
-    if (chips.length > 0) {
+    if (chips.length > 0 && !selectedChip) {
       setSelectedChip(chips[0].label)
     }
   }, [chips]) // Run when chips change
@@ -105,50 +195,24 @@ const SearchResults: React.FC<SearchResultsProps> = ({ products }) => {
 
   // Handle drag start for products
   const handleDragStart = (e: React.DragEvent, product: Product) => {
-    e.dataTransfer.setData("product-title", product.title)
-    e.dataTransfer.effectAllowed = "move"
-
-    // Create a drag image
-    const dragImage = document.createElement("div")
-    dragImage.className = styles.dragImage
-    dragImage.innerHTML = `
-      <div style="
-        background: #ffcd4e;
-        color: #000;
-        padding: 8px 16px;
-        border-radius: 8px;
-        font-size: 14px;
-        font-weight: 500;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-      ">${product.title}</div>
-    `
-    document.body.appendChild(dragImage)
-    e.dataTransfer.setDragImage(dragImage, 75, 25)
-
-    // Set timeout to remove the drag image element
-    setTimeout(() => {
-      document.body.removeChild(dragImage)
-    }, 0)
-
+    ensureProductSelected(product)
+    setIsDragging(true)
     setDraggedProduct(product)
-    e.currentTarget.style.opacity = "0.6"
-    e.currentTarget.style.transform = "scale(0.95)"
+    let dragProducts: Product[] = []
+    // Use latest selectedProducts after ensuring selection
+    const latestSelected = selectedProducts.some(p => p.id === product.id)
+      ? selectedProducts
+      : [...selectedProducts, product]
+    dragProducts = latestSelected.length > 1 ? latestSelected : [product]
+    e.dataTransfer.setData("application/json", JSON.stringify(dragProducts))
+    e.dataTransfer.setData("product-object", JSON.stringify(dragProducts))
+    e.dataTransfer.effectAllowed = "move"
   }
 
   // Handle drag end for products
-  const handleDragEnd = (e: React.DragEvent) => {
-    e.currentTarget.style.opacity = ""
-    e.currentTarget.style.transform = ""
+  const handleDragEnd = () => {
+    setIsDragging(false)
     setDraggedProduct(null)
-  }
-
-  // Handle touch start for mobile drag
-  const handleTouchStart = (product: Product) => {
-    // Dispatch custom event for touch drag
-    const touchDragEvent = new CustomEvent("touchDragStart", {
-      detail: { product },
-    })
-    window.dispatchEvent(touchDragEvent)
   }
 
   return (
@@ -190,11 +254,11 @@ const SearchResults: React.FC<SearchResultsProps> = ({ products }) => {
             width: "100%",
           }}
         >
-          {chips.map((chip, index) => {
+          {chips.map((chip) => {
             const isSelected = chip.label === selectedChip
             return (
               <div
-                key={index}
+                key={chip.label}
                 className={styles.chip}
                 style={{
                   background: isSelected ? "rgba(255, 205, 78, 1)" : "white",
@@ -260,20 +324,21 @@ const SearchResults: React.FC<SearchResultsProps> = ({ products }) => {
         <div
           style={{
             background: "#fff",
-            width: 400, // widened from 336
+            width: "100%", // full width of parent/canvas
+            maxWidth: 400, // match canvas max width
             display: "flex",
             flexDirection: "column",
-            alignItems: "flex-start",
+            alignItems: "center",
             borderRadius: 20,
             position: "relative",
             overflow: "hidden",
-            padding: "32px 0 0 0",
+            padding: "32px 16px 0 16px", // equal left/right padding
           }}
         >
           {/* Heading */}
           <div
             style={{
-              width: 195,
+              width: "100%",
               display: "flex",
               flexDirection: "column",
               alignItems: "flex-start",
@@ -330,126 +395,41 @@ const SearchResults: React.FC<SearchResultsProps> = ({ products }) => {
             </span>
           </div>
 
-          {/* Product grid */}
-          <div
-            style={{
-              width: 380, // widened from 315
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "flex-start",
-              gap: 12,
-              marginTop: 72, // Add margin to push below heading
-              marginLeft: 12,
-              marginBottom: 24,
-            }}
-          >
-            {/* Product cards */}
-            {filteredProducts.map((product, index) => (
-              <div
-                key={index}
-                className={styles.productCard}
-                style={{
-                  display: "flex",
-                  flexDirection: "row",
-                  alignItems: "center",
-                  gap: 8,
-                  background: "rgba(245, 244, 245, 1)",
-                  borderRadius: 11.5,
-                  padding: 10,
-                  width: "100%",
-                  marginBottom: 0,
-                  cursor: "grab",
-                  position: "relative",
-                  transition: "transform 0.2s, box-shadow 0.2s",
-                }}
-                draggable
-                onDragStart={(e) => handleDragStart(e, product)}
-                onDragEnd={handleDragEnd}
-                onTouchStart={() => handleTouchStart(product)}
-                onClick={() => handleProductClick(index)}
-              >
+          {/* Product list: one column, each card full width */}
+          <div style={{ width: "100%", display: "flex", flexDirection: "column", gap: 16, marginTop: 64 }}>
+            {filteredProducts.map((product, index) => {
+              const isSelected = selectedProducts.some(p => p.id === product.id)
+              const key = product.id ? String(product.id) : `product-${index}`
+              return (
                 <div
-                  style={{
-                    width: 40,
-                    height: 40,
-                    background: "#fff",
-                    borderRadius: "999px",
-                    marginRight: 10,
-                    display: "flex",
-                    justifyContent: "center",
-                    alignItems: "center",
-                    overflow: "hidden",
-                  }}
+                  key={key}
+                  className={styles.productCard + (isSelected ? ' ' + styles.selected : '')}
+                  style={{ width: "100%", maxWidth: 400, margin: "0 auto" }}
+                  draggable={true}
+                  onMouseDown={e => ensureProductSelected(product)}
+                  onTouchStart={e => { ensureProductSelected(product); handleTouchStart(product, e) }}
+                  onDragStart={e => handleDragStart(e, product)}
+                  onDragEnd={handleDragEnd}
+                  onClick={() => handleProductClick(index)}
+                  tabIndex={0}
                 >
                   <img
                     src={product.image || "/placeholder.svg"}
                     alt={product.title}
-                    style={{ width: 36, height: 36, objectFit: "cover", borderRadius: "999px" }}
+                    className={styles.productImage}
                   />
+                  <div className={styles.productInfo}>
+                    <div className={styles.productTitle}>{product.title}</div>
+                    <div className={styles.productPrice}>€{product.price}</div>
+                  </div>
+                  {isSelected && (
+                    <div style={{position: 'absolute', top: 6, right: 6, background: '#ffcd4e', borderRadius: '50%', width: 18, height: 18, display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 1px 4px rgba(0,0,0,0.08)'}}>
+                      <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M3 6.5L5 8.5L9 4.5" stroke="#222" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                    </div>
+                  )}
                 </div>
-                <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-                  <span
-                    style={{
-                      color: "#000",
-                      fontSize: "12px",
-                      fontFamily: "Decathlon Text",
-                      fontWeight: 500,
-                      lineHeight: "130%",
-                    }}
-                  >
-                    {product.title}
-                  </span>
-                  <span
-                    style={{
-                      color: "#000",
-                      fontSize: "12px",
-                      fontFamily: "Decathlon Text",
-                      fontWeight: 500,
-                      lineHeight: "130%",
-                    }}
-                  >
-                    {product.price}
-                  </span>
-                </div>
-                {/* Drag handle icon */}
-                <div
-                  style={{
-                    position: "absolute",
-                    right: 12,
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                  }}
-                >
-                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path
-                      d="M6 4C6 4.55228 5.55228 5 5 5C4.44772 5 4 4.55228 4 4C4 3.44772 4.44772 3 5 3C5.55228 3 6 3.44772 6 4Z"
-                      fill="#616161"
-                    />
-                    <path
-                      d="M6 8C6 8.55228 5.55228 9 5 9C4.44772 9 4 8.55228 4 8C4 7.44772 4.44772 7 5 7C5.55228 7 6 7.44772 6 8Z"
-                      fill="#616161"
-                    />
-                    <path
-                      d="M6 12C6 12.5523 5.55228 13 5 13C4.44772 13 4 12.5523 4 12C4 11.4477 4.44772 11 5 11C5.55228 11 6 11.4477 6 12Z"
-                      fill="#616161"
-                    />
-                    <path
-                      d="M12 4C12 4.55228 11.5523 5 11 5C10.4477 5 10 4.55228 10 4C10 3.44772 10.4477 3 11 3C11.5523 3 12 3.44772 12 4Z"
-                      fill="#616161"
-                    />
-                    <path
-                      d="M12 8C12 8.55228 11.5523 9 11 9C10.4477 9 10 8.55228 10 8C10 7.44772 10.4477 7 11 7C11.5523 7 12 7.44772 12 8Z"
-                      fill="#616161"
-                    />
-                    <path
-                      d="M12 12C12 12.5523 11.5523 13 11 13C10.4477 13 10 12.5523 10 12C10 11.4477 10.4477 11 11 11C11.5523 11 12 11.4477 12 12Z"
-                      fill="#616161"
-                    />
-                  </svg>
-                </div>
-              </div>
-            ))}
+              )
+            })}
           </div>
         </div>
       </div>
@@ -478,7 +458,7 @@ const SearchResults: React.FC<SearchResultsProps> = ({ products }) => {
               alignItems: "flex-start",
               gap: 10,
               padding: "0 27px",
-              margin: "-36px 0 8px 0", // reduced top margin from 24px to 8px
+              margin: "-120px 0 8px 0", // moved bar further up from -36px to -48px
             }}
           >
             {/* Next product preview */}
@@ -491,12 +471,12 @@ const SearchResults: React.FC<SearchResultsProps> = ({ products }) => {
                 justifyContent: "center",
                 alignItems: "center",
                 gap: 10,
-                padding: 4,
+                padding: "4px 4px 4px 24px", // increased left padding
                 borderRadius: 8,
                 boxShadow: "0px 4px 22.1px 0px rgba(0,0,0,0.05)",
-                overflow: "hidden",
-                minWidth: 120,
-                maxWidth: 180,
+                overflow: "visible", // allow label to show above
+                minWidth: 200, // widened from 120
+                maxWidth: 260, // widened from 180
                 cursor: selectedProductIndex < filteredProducts.length - 1 ? "pointer" : "default",
                 position: "relative", // for stacking
               }}
@@ -547,7 +527,7 @@ const SearchResults: React.FC<SearchResultsProps> = ({ products }) => {
                           fontWeight: 500,
                           lineHeight: "130%",
                           textAlign: "left",
-                          maxWidth: 80,
+                          maxWidth: 140, // increased from 80
                           overflow: "hidden",
                           textOverflow: "ellipsis",
                           whiteSpace: "nowrap",
@@ -600,7 +580,7 @@ const SearchResults: React.FC<SearchResultsProps> = ({ products }) => {
                           fontWeight: 500,
                           lineHeight: "130%",
                           textAlign: "left",
-                          maxWidth: 80,
+                          maxWidth: 140, // increased from 80
                           overflow: "hidden",
                           textOverflow: "ellipsis",
                           whiteSpace: "nowrap",
@@ -652,7 +632,7 @@ const SearchResults: React.FC<SearchResultsProps> = ({ products }) => {
                           fontWeight: 500,
                           lineHeight: "130%",
                           textAlign: "left",
-                          maxWidth: 80,
+                          maxWidth: 140, // increased from 80
                           overflow: "hidden",
                           textOverflow: "ellipsis",
                           whiteSpace: "nowrap",
@@ -699,17 +679,17 @@ const SearchResults: React.FC<SearchResultsProps> = ({ products }) => {
             style={{
               background: "#fff",
               width: 336,
-              height: 508,
+              height: 400, // shortened from 508
               display: "flex",
               flexDirection: "column",
               alignItems: "center",
-              justifyContent: "center",
+              justifyContent: "center", // changed from flex-end to center
               borderRadius: 20,
               position: "relative",
               overflow: "hidden",
               boxShadow: "0 4px 22.1px 0px rgba(0,0,0,0.05)",
-              marginBottom: 24,
-              marginTop: 12, // add more space between top bar and product part
+              marginBottom: 60,
+              marginTop: 12, // moved up from 12 to 0
             }}
           >
             {/* Progress bar */}
@@ -725,21 +705,7 @@ const SearchResults: React.FC<SearchResultsProps> = ({ products }) => {
                 left: 21,
               }}
             >
-              {filteredProducts[selectedProductIndex] &&
-                filteredProducts[selectedProductIndex].images &&
-                Array.isArray(filteredProducts[selectedProductIndex].images) &&
-                filteredProducts[selectedProductIndex].images.map((_, i, arr) => (
-                  <div
-                    key={i}
-                    style={{
-                      flex: 1,
-                      height: 4,
-                      borderRadius: 999,
-                      background: i === currentImageIndex ? "#FFD14F" : "#F5F4F5",
-                      marginRight: i !== arr.length - 1 ? 4 : 0,
-                    }}
-                  />
-                ))}
+              {/* Removed references to images */}
             </div>
             {/* Product image only, centered */}
             <div
@@ -747,20 +713,51 @@ const SearchResults: React.FC<SearchResultsProps> = ({ products }) => {
                 width: "100%",
                 height: "100%",
                 display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                justifyContent: "center",
+                flexDirection: "row", // keep as row if you want image to be centered horizontally
+                alignItems: "center", // center vertically
+                justifyContent: "center", // center horizontally
+                position: "relative", // Make relative for overlay positioning
               }}
             >
+              {/* Top blur overlay */}
+              <div
+                style={{
+                  position: "absolute",
+                  top: 0,
+                  left: 0,
+                  width: "100%",
+                  height: 90, // increased from 40 to 70 for more coverage
+                  pointerEvents: "none",
+                  background: "linear-gradient(to bottom, rgba(245,244,245,0.85) 70%, rgba(245,244,245,0) 100%)",
+                  zIndex: 2,
+                  borderTopLeftRadius: 16,
+                  borderTopRightRadius: 16,
+                }}
+              />
+              {/* Bottom blur overlay */}
+              <div
+                style={{
+                  position: "absolute",
+                  bottom: 0,
+                  left: 0,
+                  width: "100%",
+                  height: 70, // increased from 40 to 70 for more coverage
+                  pointerEvents: "none",
+                  background: "linear-gradient(to top, rgba(245,244,245,0.85) 70%, rgba(245,244,245,0) 100%)",
+                  zIndex: 2,
+                  borderBottomLeftRadius: 16,
+                  borderBottomRightRadius: 16,
+                }}
+              />
               {filteredProducts[selectedProductIndex] && (
                 <img
                   src={filteredProducts[selectedProductIndex].image || "/placeholder.svg"}
                   alt={filteredProducts[selectedProductIndex].title}
-                  style={{ width: 200, height: 200, objectFit: "cover", borderRadius: 16 }}
+                  style={{ width: "100%", height: "auto", objectFit: "cover", borderRadius: 16, zIndex: 1 }}
                 />
               )}
             </div>
-            {/* Overlay card at bottom left */}
+            {/* Overlay card at bottom */}
             <div
               style={{
                 background: "#fff",
@@ -773,9 +770,10 @@ const SearchResults: React.FC<SearchResultsProps> = ({ products }) => {
                 borderRadius: 8,
                 position: "absolute",
                 left: 31,
-                top: 406,
+                bottom: 24, // move to the very bottom, above the border radius
                 boxShadow: "0px 4px 22.1px 0px rgba(0,0,0,0.05)",
                 overflow: "hidden",
+                zIndex: 3, // above blur overlays
               }}
             >
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%" }}>
@@ -795,9 +793,16 @@ const SearchResults: React.FC<SearchResultsProps> = ({ products }) => {
                       fontFamily: "Decathlon Text",
                       fontWeight: 500,
                       lineHeight: "170%",
+                      maxWidth: 180,
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                      display: "block",
                     }}
                   >
-                    {filteredProducts[selectedProductIndex].title}
+                    {filteredProducts[selectedProductIndex].title.length > 18
+                      ? filteredProducts[selectedProductIndex].title.slice(0, 18) + "..."
+                      : filteredProducts[selectedProductIndex].title}
                   </span>
                   <span
                     style={{

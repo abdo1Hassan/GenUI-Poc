@@ -111,9 +111,10 @@
 
 .productGrid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
   gap: 16px;
   width: 100%;
+  padding: 18px 0 12px 0;
 }
 
 .productsContainer {
@@ -127,45 +128,67 @@
 }
 
 .productCard {
-  background-color: white;
-  border-radius: 8px;
-  overflow: hidden;
+  background: #fff;
+  border-radius: 14px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
   display: flex;
   flex-direction: column;
-  border: 1px solid white;
+  align-items: center;
+  padding: 12px 6px 10px 6px;
   cursor: grab;
-  transition: transform 0.2s, box-shadow 0.2s;
+  transition: box-shadow 0.15s, transform 0.15s;
+  outline: none;
+  border: 2px solid transparent;
+  min-height: 120px;
+  position: relative;
+  max-width: 150px;
 }
-
+.productCard:active, .productCard:focus, .productCard:focus-visible {
+  border: 2px solid #ffcd4e;
+  box-shadow: 0 4px 16px rgba(255,205,78,0.14);
+  transform: scale(1.03);
+}
 .productCard:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 4px 16px rgba(255,205,78,0.14);
+  transform: scale(1.03);
 }
 
-.productCard:active {
-  cursor: grabbing;
-  transform: scale(0.98);
+.selected {
+  border: 2px solid #ffcd4e !important;
+  box-shadow: 0 6px 20px rgba(255,205,78,0.18) !important;
+  background: #fffbe6 !important;
 }
 
 .productImage {
-  width: 100%;
-  padding-top: 100%; /* This creates a 1:1 aspect ratio */
-  background-color: #f5f5f5;
-  position: relative;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  object-fit: cover;
+  background: #f5f4f5;
+  margin-bottom: 8px;
+  border: 2px solid #ffcd4e;
+  box-shadow: 0 1px 4px rgba(255,205,78,0.08);
+  z-index: 1;
 }
 
 .productInfo {
-  padding: 12px;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  align-items: center;
+  gap: 3px;
+  width: 100%;
+  z-index: 2;
 }
 
 .productTitle {
-  font-weight: 500;
-  font-size: 14px;
-  line-height: 130%;
-  color: #000000;
+  font-size: 13px;
+  font-weight: 600;
+  color: #181818;
+  text-align: center;
+  margin-bottom: 0px;
+  line-height: 1.2;
+  word-break: break-word;
+  max-width: 110px;
 }
 
 .sectionTitle {
@@ -186,9 +209,18 @@
 }
 
 .productPrice {
+  font-size: 12px;
+  color: #616161;
   font-weight: 600;
-  font-size: 14px;
-  color: #000000;
+  background: #fffae3;
+  border-radius: 6px;
+  padding: 1px 7px;
+  margin-top: 1px;
+}
+
+/* Fix overlap for first item */
+.productGrid > .productCard:first-child {
+  margin-top: 4px;
 }
 
 .dragImage {

@@ -27,6 +27,7 @@ interface Product {
   brand: string
   price: string
   image: string
+  url: string
   nature?: string
 }
 
@@ -51,11 +52,38 @@ export default function Chat({ onMessageSent }: ChatProps) {
 
   // Product related states (from previous implementation)
   const [products, setProducts] = useState<Product[]>([])
-  const [productTags, setProductTags] = useState<string[]>([])
+  const [productTags, setProductTags] = useState<Product[]>([])
   const [intent, setIntent] = useState("")
   const [isDraggingOver, setIsDraggingOver] = useState(false)
   const [isTouchDragging, setIsTouchDragging] = useState(false)
-  const [touchDragProduct, setTouchDragProduct] = useState<Product | null>(null)
+  const [touchDragProducts, setTouchDragProducts] = useState<Product[]>([])
+
+  // Drag-over state
+  const [isProductDragOver, setIsProductDragOver] = useState(false)
+
+  // Detect if canvas is maximized (topFocused)
+  const [isCanvasMaximized, setIsCanvasMaximized] = useState(false)
+  useEffect(() => {
+    const handleFocusMode = () => {
+      // Check if the AppLayout focusMode is topFocused
+      const appLayout = document.querySelector('[class*="topSection"]')
+      if (appLayout && appLayout.className.includes("topFocused")) {
+        setIsCanvasMaximized(true)
+      } else {
+        setIsCanvasMaximized(false)
+      }
+    }
+    window.addEventListener("userMessageSent", handleFocusMode)
+    window.addEventListener("searchTriggered", handleFocusMode)
+    window.addEventListener("productsLoaded", handleFocusMode)
+    // Also check on mount
+    handleFocusMode()
+    return () => {
+      window.removeEventListener("userMessageSent", handleFocusMode)
+      window.removeEventListener("searchTriggered", handleFocusMode)
+      window.removeEventListener("productsLoaded", handleFocusMode)
+    }
+  }, [])
 
   // Refs
   const messagesEndRef = useRef<HTMLDivElement>(null)
@@ -94,13 +122,18 @@ export default function Chat({ onMessageSent }: ChatProps) {
     resizeTextarea()
   }, [inputValue])
 
+  // Log productTags changes
+  useEffect(() => {
+    console.log("[DEBUG] productTags:", productTags)
+  }, [productTags])
+
   // Handle form submission
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!inputValue.trim() && productTags.length === 0) return
 
     // Combine input value with product tags
-    const fullQuery = `${inputValue} ${productTags.map((tag) => tag).join(" ")}`.trim()
+    const fullQuery = `${inputValue} ${productTags.map((tag) => tag.title).join(" ")}`.trim()
 
     const userMessage: MessageWithContent = {
       id: Date.now().toString(),
@@ -163,6 +196,7 @@ export default function Chat({ onMessageSent }: ChatProps) {
                 brand: "Outdoor Brand",
                 price: "$149.99",
                 image: "/camping-tent.png",
+                url: "/camping-tent",
                 nature: "Camping essentials",
               },
               {
@@ -171,6 +205,7 @@ export default function Chat({ onMessageSent }: ChatProps) {
                 brand: "Hydro Brand",
                 price: "$24.99",
                 image: "/reusable-water-bottle.png",
+                url: "/water-bottle",
                 nature: "Water activities",
               },
               {
@@ -179,6 +214,7 @@ export default function Chat({ onMessageSent }: ChatProps) {
                 brand: "Comfort Brand",
                 price: "$89.99",
                 image: "/placeholder.svg?key=fih1r",
+                url: "/sleeping-bag",
                 nature: "Camping essentials",
               },
               {
@@ -187,6 +223,7 @@ export default function Chat({ onMessageSent }: ChatProps) {
                 brand: "Water Brand",
                 price: "$499.99",
                 image: "/placeholder.svg?key=41hb2",
+                url: "/kayak",
                 nature: "Kayaking",
               },
             ],
@@ -227,7 +264,7 @@ export default function Chat({ onMessageSent }: ChatProps) {
 
       // Handle response based on intent
       if (data.intent === "compare") {
-        const compareText = `Comparing ${productTags.join(" vs ")}`
+        const compareText = `Comparing ${productTags.map((tag) => tag.title).join(" vs ")}`
         setMessages((prev) => [
           ...prev,
           {
@@ -259,6 +296,7 @@ export default function Chat({ onMessageSent }: ChatProps) {
 
       // Set products from API response
       setProducts(productsWithNature || [])
+      // Only clear productTags after message send, not after every drag/drop
       setProductTags([])
 
       // Show search indicator if it's a search query
@@ -297,39 +335,70 @@ export default function Chat({ onMessageSent }: ChatProps) {
   }
 
   // Product drag and drop functionality (preserved from original implementation)
-  const handleDragOver = (event: React.DragEvent) => {
+  const handleDragOver = (event: React.DragEvent<HTMLDivElement>) => {
     event.preventDefault()
-    if (!isDraggingOver) {
-      setIsDraggingOver(true)
+    setIsProductDragOver(true)
+  }
+
+  const handleDragEnter = (event: React.DragEvent<HTMLDivElement>) => {
+    event.preventDefault()
+    setIsProductDragOver(true)
+  }
+
+  const handleDragLeave = (event: React.DragEvent<HTMLDivElement>) => {
+    event.preventDefault()
+    setIsProductDragOver(false)
+  }
+
+  const handleDrop = (event: React.DragEvent<HTMLDivElement>) => {
+    event.preventDefault()
+    setIsProductDragOver(false)
+    let productJson = event.dataTransfer.getData("application/json")
+    if (!productJson) {
+      productJson = event.dataTransfer.getData("product-object")
     }
-  }
-
-  const handleDragLeave = (event: React.DragEvent) => {
-    event.preventDefault()
-    setIsDraggingOver(false)
-  }
-
-  const handleDrop = (event: React.DragEvent) => {
-    event.preventDefault()
-    setIsDraggingOver(false)
-    const title = event.dataTransfer.getData("product-title")
-    if (title && !productTags.includes(title)) {
-      setProductTags((prev) => [...prev, title])
-      if (textareaRef.current) {
-        textareaRef.current.focus()
+    let products: Product[] = []
+    try {
+      const parsed = JSON.parse(productJson)
+      if (Array.isArray(parsed)) {
+        products = parsed
+      } else if (parsed && typeof parsed === 'object') {
+        products = [parsed]
       }
+    } catch (e) {
+      products = []
+    }
+    // Debug: log products and previous productTags
+    console.log('[DEBUG] Dropped products:', products)
+    setProductTags(prev => {
+      console.log('[DEBUG] Previous productTags:', prev)
+      // Combine previous tags and dropped products
+      const combined = [...prev, ...products]
+      // Deduplicate by unique property (url)
+      const seen = new Set()
+      const deduped = []
+      for (const tag of combined) {
+        const key = tag.url // Use url for uniqueness
+        if (!seen.has(key)) {
+          seen.add(key)
+          deduped.push(tag)
+        }
+      }
+      return deduped
+    })
+    if (textareaRef.current) {
+      textareaRef.current.focus()
     }
   }
 
   // Touch-based drag and drop for mobile
   const handleTouchStart = (product: Product) => {
     setIsTouchDragging(true)
-    setTouchDragProduct(product)
+    setTouchDragProducts([product])
   }
 
-  const handleTouchEnd = (event: React.TouchEvent) => {
-    if (isTouchDragging && touchDragProduct) {
-      // Check if touch ended over the input area
+  const handleTouchEnd = (event: TouchEvent) => {
+    if (isTouchDragging && touchDragProducts.length > 0) {
       const inputRect = inputAreaRef.current?.getBoundingClientRect()
       if (inputRect) {
         const touchX = event.changedTouches[0].clientX
@@ -341,28 +410,32 @@ export default function Chat({ onMessageSent }: ChatProps) {
           touchY >= inputRect.top &&
           touchY <= inputRect.bottom
         ) {
-          // Add the product as a tag
-          if (!productTags.includes(touchDragProduct.title)) {
-            setProductTags((prev) => [...prev, touchDragProduct.title])
+          setProductTags((prev) => {
+            const existingIds = new Set(prev.map((tag) => tag.id))
+            const newProducts = touchDragProducts.filter((product) => !existingIds.has(product.id))
+            return [...prev, ...newProducts]
+          })
+          if (textareaRef.current) {
+            textareaRef.current.focus()
           }
         }
       }
 
       setIsTouchDragging(false)
-      setTouchDragProduct(null)
+      setTouchDragProducts([])
+      setIsProductDragOver(false)
     }
-  }
-
-  const removeTag = (tagToRemove: string) => {
-    setProductTags((prev) => prev.filter((tag) => tag !== tagToRemove))
   }
 
   // Listen for touch drag events from Canvas
   useEffect(() => {
     const handleTouchDrag = (event: Event) => {
       const customEvent = event as CustomEvent
-      if (customEvent.detail?.product) {
-        setTouchDragProduct(customEvent.detail.product)
+      if (Array.isArray(customEvent.detail?.products)) {
+        setTouchDragProducts(customEvent.detail.products)
+        setIsTouchDragging(true)
+      } else if (customEvent.detail?.product) {
+        setTouchDragProducts([customEvent.detail.product])
         setIsTouchDragging(true)
       }
     }
@@ -373,8 +446,51 @@ export default function Chat({ onMessageSent }: ChatProps) {
     }
   }, [])
 
+  // Add touch event handlers to input area for mobile drag-and-drop
+  useEffect(() => {
+    const inputArea = inputAreaRef.current
+    if (!inputArea) return
+
+    const handleTouchMove = (event: TouchEvent) => {
+      if (isTouchDragging && touchDragProducts.length > 0) {
+        setIsProductDragOver(true)
+      }
+    }
+    const handleTouchEnd = (event: TouchEvent) => {
+      if (isTouchDragging && touchDragProducts.length > 0) {
+        const inputRect = inputArea.getBoundingClientRect()
+        const touch = event.changedTouches[0]
+        if (
+          touch.clientX >= inputRect.left &&
+          touch.clientX <= inputRect.right &&
+          touch.clientY >= inputRect.top &&
+          touch.clientY <= inputRect.bottom
+        ) {
+          setProductTags(prev => {
+            const existingIds = new Set(prev.map(p => p.id))
+            const newProducts = touchDragProducts.filter(p => !existingIds.has(p.id))
+            return [...prev, ...newProducts]
+          })
+        }
+        setIsTouchDragging(false)
+        setTouchDragProducts([])
+        setIsProductDragOver(false)
+      }
+    }
+    inputArea.addEventListener("touchmove", handleTouchMove)
+    inputArea.addEventListener("touchend", handleTouchEnd)
+    return () => {
+      inputArea.removeEventListener("touchmove", handleTouchMove)
+      inputArea.removeEventListener("touchend", handleTouchEnd)
+    }
+  }, [isTouchDragging, touchDragProducts, productTags])
+
+  const removeTag = (idToRemove: string) => {
+    setProductTags((prev) => prev.filter((tag) => tag.id !== idToRemove))
+  }
+
   return (
-    <div className={styles.container}>
+    <div className={`${styles.container} ${isCanvasMaximized ? "canvasMaximized" : ""}`}>
       <div className={styles.messageList}>
         {messages.map((message) => (
           <div key={message.id} className={styles.messageGroup}>
@@ -421,27 +537,53 @@ export default function Chat({ onMessageSent }: ChatProps) {
       <div
         className={styles.inputContainer}
         ref={inputAreaRef}
-        onDrop={handleDrop}
+        style={{ position: "relative" }}
         onDragOver={handleDragOver}
+        onDragEnter={handleDragEnter}
         onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
       >
-        {/* Product tags */}
-        {productTags.length > 0 && (
-          <div className={styles.productTags}>
-            {productTags.map((tag, idx) => (
-              <div key={idx} className={styles.productTag}>
-                {tag}
-                <div className={styles.removeTag} onClick={() => removeTag(tag)}>
-                  <svg width="8" height="8" viewBox="0 0 8 8" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M1 1L7 7M1 7L7 1" stroke="black" strokeWidth="1.5" strokeLinecap="round" />
-                  </svg>
-                </div>
-              </div>
-            ))}
+        {isProductDragOver && (
+          <div className={styles.dragOverlay}>
+            <div style={{
+              position: "absolute",
+              top: "50%",
+              left: "50%",
+              transform: "translate(-50%, -50%)",
+              color: "#ffcd4e",
+              fontWeight: 600,
+              fontSize: 16,
+              pointerEvents: "none"
+            }}>
+              Drop product here to add
+            </div>
           </div>
         )}
-
-        <form onSubmit={handleSubmit} className={styles.inputForm}>
+        <form onSubmit={handleSubmit} className={styles.inputForm} style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          {/* Product chips inside the input bar, before the textarea */}
+          {productTags.length > 0 && (
+            <div style={{ display: "flex", flexDirection: "row", gap: 4, alignItems: "center", maxWidth: 220, overflowX: "auto" }}>
+              {productTags.map((tag, idx) => (
+                <div key={tag.id || idx} className={styles.productChip}>
+                  <img
+                    src={tag.image}
+                    alt={tag.title}
+                    className={styles.productChipImg}
+                  />
+                  <button
+                    type="button"
+                    className={styles.productChipClose}
+                    onClick={() => removeTag(tag.id)}
+                    aria-label={`Remove ${tag.title}`}
+                  >
+                    <svg width="12" height="12" viewBox="0 0 8 8" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M1 1L7 7M1 7L7 1" stroke="black" strokeWidth="1.5" strokeLinecap="round" />
+                    </svg>
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
           <textarea
             ref={textareaRef}
             value={inputValue}
@@ -450,6 +592,7 @@ export default function Chat({ onMessageSent }: ChatProps) {
             className={styles.input}
             placeholder={isDraggingOver || isTouchDragging ? "Drop product here..." : "Exploring..."}
             rows={1}
+            style={{ flex: 1, minWidth: 0 }}
           />
           <button
             type="submit"
@@ -468,9 +611,6 @@ export default function Chat({ onMessageSent }: ChatProps) {
           </button>
         </form>
       </div>
-
-      {/* Touch drag indicator - only visible when dragging on mobile */}
-      {isTouchDragging && touchDragProduct && <div className={styles.dragIndicator}>Drag to input area</div>}
     </div>
   )
 }

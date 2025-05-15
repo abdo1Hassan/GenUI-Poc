@@ -25,7 +25,23 @@
   padding: 0 24px;
   width: 100%;
 }
-
+.dragOverlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(255, 205, 78, 0.12);
+  border: 2px dashed #ffcd4e;
+  border-radius: 16px;
+  z-index: 10;
+  pointer-events: none;
+  transition: background 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 8px;
+}
 .senderLabel {
   color: rgba(97, 97, 97, 1);
   font-size: 12px;
@@ -63,7 +79,7 @@
 }
 
 .inputContainer {
-  padding: 32px 24px;
+  padding: 48px 24px;
   background: white;
   width: 100%;
   display: flex;
@@ -71,6 +87,17 @@
   justify-content: center;
   align-items: center;
   overflow: hidden;
+  margin-bottom: 0px; /* Add more space below the input area */
+}
+
+.inputContainer.minimizedChat {
+  margin-bottom: 64px; /* Increase space below input area when chat is minimized */
+}
+
+@media (max-width: 600px) {
+  .inputContainer.minimizedChat {
+    margin-bottom: 120px; /* More space for mobile/small screens */
+  }
 }
 
 .inputForm {
@@ -87,7 +114,7 @@
   min-width: 0;
   height: 48px;
   background-color: rgba(245, 244, 245, 1);
-  padding: 0 16px;
+  padding: 0 18px;
   border: none;
   border-radius: 999px;
   font-size: 12px;
@@ -137,16 +164,18 @@
 
 .productCarousel {
   width: 100%;
-  overflow-x: auto;
+  height: 100%;
+  overflow-y: auto;
   padding: 16px 24px;
   display: flex;
+  flex-direction: column;
   gap: 12px;
-  scroll-snap-type: x mandatory;
 }
 
 .productCard {
-  scroll-snap-align: start;
-  min-width: 140px;
+  width: 100%;
+  max-width: 400px;
+  margin: 0 auto;
   background-color: white;
   border-radius: 16px;
   overflow: hidden;
@@ -192,25 +221,79 @@
 }
 
 .productTag {
-  background-color: #ffcd4e;
-  color: #000000;
-  font-size: 12px;
-  padding: 6px 12px;
-  border-radius: 999px;
+  background: none;
+  padding: 0;
   display: flex;
   align-items: center;
-  gap: 6px;
+  position: relative;
 }
 
-.removeTag {
-  width: 16px;
-  height: 16px;
+.productTag img {
+  width: 32px;
+  height: 32px;
   border-radius: 50%;
-  background-color: rgba(0, 0, 0, 0.1);
+  object-fit: cover;
+  background: #fff;
+  border: 2px solid #ffcd4e;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+}
+
+.productChip {
+  display: flex;
+  align-items: center;
+  background: #f5f4f5;
+  border-radius: 999px;
+  padding: 0 8px 0 8px;
+  height: 48px;
+  margin-right: 2px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+  border: none;
+}
+
+.productChipImg {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  object-fit: cover;
+  background: #fff;
+  border: none;
+  margin-right: 8px;
+}
+
+.productChipClose {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: none;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
+  margin-left: 8px;
+  border: none;
+  transition: background 0.15s;
+  padding: 0;
+}
+
+.productChipClose:hover {
+  background: #ececec;
+}
+
+.removeTag {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.10);
+  border: 1px solid #eee;
+  z-index: 2;
 }
 
 .dragIndicator {

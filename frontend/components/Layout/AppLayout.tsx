@@ -64,19 +64,34 @@ export default function AppLayout() {
     }
   }, [])
 
+  // Listen for focus chat events (when dragging products)
+  useEffect(() => {
+    const handleFocusChat = () => {
+      setFocusMode("bottomFocused")
+    }
+
+    window.addEventListener("focusChat", handleFocusChat)
+    return () => {
+      window.removeEventListener("focusChat", handleFocusChat)
+    }
+  }, [])
+
   return (
-    <div className={styles.container}>
-      <div className={`${styles.topSection} ${styles[focusMode]}`}>
-        <Canvas showSearchResults={showSearchResults} />
+    <>
+      <div className={styles.topBar}>
+        {/* Top bar content can go here, e.g. logo or title */}
       </div>
-
-      <div className={styles.dividerBar} onClick={toggleFocus}>
-        <div className={styles.handle}></div>
+      <div className={styles.container}>
+        <div className={`${styles.topSection} ${styles[focusMode]}`}>
+          <Canvas showSearchResults={showSearchResults} />
+        </div>
+        <div className={styles.dividerBar} onClick={toggleFocus}>
+          <div className={styles.handle}></div>
+        </div>
+        <div className={`${styles.bottomSection} ${styles[focusMode]}`}>
+          <Chat onMessageSent={() => setFocusMode("bottomFocused")} />
+        </div>
       </div>
-
-      <div className={`${styles.bottomSection} ${styles[focusMode]}`}>
-        <Chat onMessageSent={() => setFocusMode("bottomFocused")} />
-      </div>
-    </div>
+    </>
   )
 }
