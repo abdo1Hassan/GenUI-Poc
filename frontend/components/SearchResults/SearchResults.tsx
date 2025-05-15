@@ -176,12 +176,12 @@ const SearchResults: React.FC<SearchResultsProps> = ({ products }) => {
     }
   }, [chipAnimation, pendingProductIndex])
 
-  // Set first chip as selected by default
+  // Remove default chip selection
   useEffect(() => {
-    if (chips.length > 0 && !selectedChip) {
-      setSelectedChip(chips[0].label)
+    if (!selectedChip) {
+      setSelectedChip("");
     }
-  }, [chips]) // Run when chips change
+  }, [chips]); // Run when chips change
 
   // When product changes, reset image index
   useEffect(() => {
@@ -191,7 +191,7 @@ const SearchResults: React.FC<SearchResultsProps> = ({ products }) => {
   // Filter products based on selected chip
   const filteredProducts = selectedChip
     ? products.filter((product) => (product.nature || "Other") === selectedChip)
-    : products.slice(0, 4) // Default to showing first 4 products if no chip selected
+    : products; // Show all products by default
 
   // Handle drag start for products
   const handleDragStart = (e: React.DragEvent, product: Product) => {

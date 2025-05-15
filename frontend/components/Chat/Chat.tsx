@@ -1,10 +1,12 @@
 "use client"
 
 import type React from "react"
+import { Typewriter } from 'react-simple-typewriter';
 
 import { useState, useRef, useEffect } from "react"
 import styles from "./Chat.module.css"
 import SearchingIndicator from "../SearchingIndicator/SearchingIndicator"
+import Toaster from "../Toaster/Toaster";
 
 interface Message {
   id: string
@@ -13,8 +15,13 @@ interface Message {
 }
 
 interface SpecialContent {
-  type: "search" | "image" | "products"
-  query: string
+  type: "search" | "products" | "comparison";
+  query?: string;
+  comparison?: {
+    table: string;
+    comparison: string;
+    recommendation: string;
+  };
 }
 
 interface MessageWithContent extends Message {
@@ -32,16 +39,155 @@ interface Product {
 }
 
 interface ChatProps {
-  onMessageSent?: () => void
+  onMessageSent?: () => void;
 }
 
-export default function Chat({ onMessageSent }: ChatProps) {
-  // Messages state
-  const [messages, setMessages] = useState<MessageWithContent[]>([
-    { id: "1", text: "Hello! How can I help you today?", sender: "bot" },
-  ])
+const ProductCard = ({ product }: { product: Product }) => {
+  return (
+    <div className="product-card">
+      <img src={product.image} alt={product.title} className="product-image" />
+      <div className="product-details">
+        <h3>
+          <Typewriter
+            words={[product.title]}
+            loop={1}
+            cursor
+            cursorStyle="|"
+            typeSpeed={10}
+            deleteSpeed={0}
+          />
+        </h3>
+        <p>
+          <Typewriter
+            words={[`Brand: ${product.brand}`]}
+            loop={1}
+            cursor
+            cursorStyle="|"
+            typeSpeed={10}
+            deleteSpeed={0}
+          />
+        </p>
+        <p>
+          <Typewriter
+            words={[`Price: ${product.price}`]}
+            loop={1}
+            cursor
+            cursorStyle="|"
+            typeSpeed={10}
+            deleteSpeed={0}
+          />
+        </p>
+      </div>
+    </div>
+  );
+};
 
-  // Input and loading states
+const ComparisonCard = ({ comparison }: { comparison: { table: string; comparison: string; recommendation: string } }) => {
+  return (
+    <div className="bg-card rounded-lg p-4 mb-4 shadow-sm">
+      <div className="space-y-4">
+        <div className="comparison-table">
+          <Typewriter
+            words={[comparison.table]}
+            loop={1}
+            cursor
+            cursorStyle="|"
+            typeSpeed={10}
+            deleteSpeed={0}
+          />
+        </div>
+        <div className="border-t pt-4">
+          <h3 className="font-semibold mb-2">Key Differences</h3>
+          <Typewriter
+            words={[comparison.comparison]}
+            loop={1}
+            cursor
+            cursorStyle="|"
+            typeSpeed={10}
+            deleteSpeed={0}
+          />
+        </div>
+        <div className="border-t pt-4">
+          <h3 className="font-semibold mb-2">Recommendation</h3>
+          <Typewriter
+            words={[comparison.recommendation]}
+            loop={1}
+            cursor
+            cursorStyle="|"
+            typeSpeed={10}
+            deleteSpeed={0}
+          />
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const Chat = ({ onMessageSent }: ChatProps) => {
+  const [messages, setMessages] = useState<MessageWithContent[]>([]);
+
+  const renderMessage = (message: MessageWithContent, isStreaming: boolean) => {
+    if (message.sender === "user") {
+      return (
+        <div
+          key={message.id}
+          className={`${styles.message} ${styles.userMessage}`}
+        >
+          {message.text}
+        </div>
+      );
+    }
+
+    if (isStreaming) {
+      return (
+        <div
+          key={message.id}
+          className={`${styles.message} ${styles.botMessage}`}
+        >
+          <div className={styles.streamingText}>
+            <Typewriter
+              words={[message.text]}
+              loop={1}
+              cursor
+              cursorStyle="|"
+              typeSpeed={10}
+              deleteSpeed={0}
+            />
+          </div>
+        </div>
+      );
+    }
+
+    // Render bot messages as plain text
+    return (
+      <div
+        key={message.id}
+        className={`${styles.message} ${styles.botMessage}`}
+      >
+        {message.text}
+      </div>
+    );
+  };
+
+  const renderMessagesSequentially = (messages: MessageWithContent[]) => {
+    const [currentIndex, setCurrentIndex] = useState(0);
+
+    useEffect(() => {
+      if (currentIndex < messages.length) {
+        const timer = setTimeout(() => {
+          setCurrentIndex((prev) => prev + 1);
+        }, messages[currentIndex].text.length * 30); // Adjust timing based on text length
+
+        return () => clearTimeout(timer);
+      }
+    }, [currentIndex, messages]);
+
+    return messages.slice(0, currentIndex + 1).map((message, index) =>
+      renderMessage(message, index === currentIndex)
+    );
+  };
+
+  // Messages state
   const [inputValue, setInputValue] = useState("")
   const [isLoading, setIsLoading] = useState(false)
 
@@ -91,6 +237,19 @@ export default function Chat({ onMessageSent }: ChatProps) {
   const inputAreaRef = useRef<HTMLDivElement>(null)
   const searchIndicatorTimer = useRef<NodeJS.Timeout | null>(null)
 
+  // Toaster states
+  const [toasterMessage, setToasterMessage] = useState("");
+  const [toasterVisible, setToasterVisible] = useState(false);
+
+  const showToaster = (message: string) => {
+    setToasterMessage(message);
+    setToasterVisible(true);
+  };
+
+  const hideToaster = () => {
+    setToasterVisible(false);
+  };
+
   // Scroll to bottom when messages change
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
@@ -129,162 +288,112 @@ export default function Chat({ onMessageSent }: ChatProps) {
 
   // Handle form submission
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!inputValue.trim() && productTags.length === 0) return
+    e.preventDefault();
+    if (!inputValue.trim() && productTags.length === 0) return;
 
-    // Pass the whole product objects as a separate field
-    const fullQuery = inputValue.trim()
+    const fullQuery = inputValue.trim();
     const userMessage: MessageWithContent = {
       id: Date.now().toString(),
       text: fullQuery,
       sender: "user",
-      specialContent: productTags.length > 0 ? { type: "products", query: JSON.stringify(productTags) } : undefined,
-    }
+    };
 
-    setMessages((prev) => [...prev, userMessage])
-    setInputValue("")
-    setIsLoading(true)
+    setMessages((prev) => [...prev, userMessage]);
+    setInputValue("");
+    setIsLoading(true);
 
-    // Emit event that user sent a message
-    const userMessageEvent = new CustomEvent("userMessageSent", {
-      detail: { message: fullQuery, products: productTags },
-    })
-    window.dispatchEvent(userMessageEvent)
-
-    // Call the onMessageSent callback if provided
-    if (onMessageSent) {
-      onMessageSent()
-    }
-
-    // Check for trigger words to show special content
-    const lowerCaseInput = fullQuery.toLowerCase()
-    const isSearchQuery =
-      lowerCaseInput.includes("search") || lowerCaseInput.includes("find") || lowerCaseInput.includes("look for")
-
-    // If it's a search query, set searching state
-    if (isSearchQuery) {
-      setIsSearching(true)
-      setSearchQuery(fullQuery)
-      setShowSearchIndicator(false)
-
-      // Trigger search results in Canvas component via custom event after a delay
-      setTimeout(() => {
-        const searchEvent = new CustomEvent("searchTriggered", {
-          detail: { query: fullQuery, products: productTags },
-        })
-        window.dispatchEvent(searchEvent as Event)
-      }, 2500)
-    }
+    if (onMessageSent) onMessageSent();
 
     try {
-      // Make API call to backend (preserved from original implementation)
-      const res = await fetch("http://localhost:8182/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ query: fullQuery, products: productTags }),
-      }).catch(() => {
-        // Mock response if API is not available
-        return {
-          ok: true,
-          json: async () => ({
-            intent: lowerCaseInput.includes("compare") ? "compare" : "search",
-            result: `Here are some results for "${fullQuery}"`,
-            products: productTags,
-          }),
-        }
-      })
+      const isCompareQuery = fullQuery.toLowerCase().includes("compare") || 
+                           (productTags && productTags.length > 1);
+      const isSearchQuery = fullQuery.toLowerCase().includes("search") || 
+                          fullQuery.toLowerCase().includes("find") || 
+                          fullQuery.toLowerCase().includes("show");
 
-      const data = await res.json()
-      setIntent(data.intent)
+      if (isSearchQuery) {
+        console.log("[DEBUG] Showing toaster: Fetching products...");
+        showToaster("Fetching products...");
+        setIsSearching(true);
+        setSearchQuery(fullQuery);
+        window.dispatchEvent(new CustomEvent("searchTriggered", {
+          detail: { query: fullQuery, products: productTags }
+        }));
+      }
 
-      // Add nature property to products based on their titles
-      const productsWithNature = (data.products || []).map((product: Product) => {
-        // Extract nature from product title or set default
-        let nature = "Other"
-        if (product.title.toLowerCase().includes("tent") || product.title.toLowerCase().includes("sleeping")) {
-          nature = "Camping essentials"
-        } else if (product.title.toLowerCase().includes("water")) {
-          nature = "Water activities"
-        } else if (product.title.toLowerCase().includes("kayak")) {
-          nature = "Kayaking"
-        } else if (product.title.toLowerCase().includes("swim")) {
-          nature = "Swimming"
-        } else if (product.title.toLowerCase().includes("surf")) {
-          nature = "Surfing"
-        }
+      if (isCompareQuery) {
+        console.log("[DEBUG] Showing toaster: Preparing comparison...");
+        showToaster("Preparing comparison...");
+        // Send comparison request
+        const response = await fetch('http://localhost:8182/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ query: fullQuery, products: productTags })
+        })
 
-        return {
-          ...product,
-          nature: product.nature || nature,
-        }
-      })
+        if (!response.ok) throw new Error('Comparison request failed')
 
-      // Dispatch event with products for Canvas component
-      const productsEvent = new CustomEvent("productsLoaded", {
-        detail: { products: productsWithNature },
-      })
-      window.dispatchEvent(productsEvent as Event)
-
-      // Handle response based on intent
-      if (data.intent === "compare") {
-        setMessages((prev) => [
-          ...prev,
-          {
-            id: (Date.now() + 1).toString(),
-            text: data.result,
+        const data = await response.json()
+        
+        if (data.result && typeof data.result === 'object') {
+          // Send comparison to Canvas
+          window.dispatchEvent(new CustomEvent("comparisonMade", {
+            detail: { comparison: data.result }
+          }))
+          
+          // Add completion message
+          setMessages(prev => [...prev, {
+            id: Date.now().toString(),
+            text: "I've prepared a detailed comparison above ↑",
             sender: "bot",
             specialContent: {
-              type: "products",
-              query: fullQuery,
-            },
-          },
-        ])
+              type: "comparison",
+              comparison: data.result
+            }
+          }])
+        } else {
+          throw new Error('Invalid comparison response format')
+        }
       } else {
-        setMessages((prev) => [
-          ...prev,
-          {
-            id: (Date.now() + 1).toString(),
-            text: data.result,
-            sender: "bot",
-            specialContent: isSearchQuery
-              ? {
-                  type: "search",
-                  query: fullQuery,
-                }
-              : undefined,
-          },
-        ])
-      }
+        // Handle non-comparison queries
+        const response = await fetch("http://localhost:8182/chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ query: fullQuery, products: productTags })
+        })
 
-      // Set products from API response
-      setProducts(productsWithNature || [])
-      // Only clear productTags after message send, not after every drag/drop
-      setProductTags([])
+        if (!response.ok) throw new Error("API request failed")
 
-      // Show search indicator if it's a search query
-      if (isSearchQuery) {
-        setShowSearchIndicator(true)
+        const data = await response.json()
 
-        if (searchIndicatorTimer.current) {
-          clearTimeout(searchIndicatorTimer.current)
+        if (data.products?.length > 0) {
+          window.dispatchEvent(new CustomEvent("productsLoaded", {
+            detail: { products: data.products }
+          }))
         }
 
-        searchIndicatorTimer.current = setTimeout(() => {
-          setShowSearchIndicator(false)
-        }, 8000)
-      }
-    } catch (e) {
-      // Handle error
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: (Date.now() + 1).toString(),
-          text: "Something went wrong.",
+        setMessages(prev => [...prev, {
+          id: Date.now().toString(),
+          text: data.result,
           sender: "bot",
-        },
-      ])
+          specialContent: data.intent === "find_product" ? {
+            type: "search",
+            query: fullQuery
+          } : undefined
+        }])
+      }
+    } catch (error) {
+      console.error("Error:", error)
+      setMessages(prev => [...prev, {
+        id: Date.now().toString(),
+        text: "Sorry, there was an error processing your request.",
+        sender: "bot"
+      }])
     } finally {
-      setIsLoading(false)
+      console.log("[DEBUG] Hiding toaster");
+      hideToaster();
+      setIsLoading(false);
+      setIsSearching(false);
     }
   }
 
@@ -453,20 +562,9 @@ export default function Chat({ onMessageSent }: ChatProps) {
 
   return (
     <div className={`${styles.container} ${isCanvasMaximized ? "canvasMaximized" : ""}`}>
+      <Toaster message={toasterMessage} visible={toasterVisible} onClose={hideToaster} />
       <div className={styles.messageList}>
-        {messages.map((message) => (
-          <div key={message.id} className={styles.messageGroup}>
-            <div className={styles.senderLabel}>{message.sender === "user" ? "" : "AI Assistant"}</div>
-            <div className={`${styles.message} ${message.sender === "user" ? styles.userMessage : styles.botMessage}`}>
-              {message.text}
-            </div>
-            {/* Show search indicator below the response when the message is from the bot and it's a search query */}
-            {message.sender === "bot" &&
-              message.specialContent?.type === "search" &&
-              isSearching &&
-              showSearchIndicator && <SearchingIndicator query={searchQuery} visible={showSearchIndicator} />}
-          </div>
-        ))}
+        {renderMessagesSequentially(messages)}
 
         {/* Remove the product carousel from here since products will now be in Canvas */}
 
@@ -576,3 +674,5 @@ export default function Chat({ onMessageSent }: ChatProps) {
     </div>
   )
 }
+
+export default Chat;

@@ -51,24 +51,99 @@
 .message {
   display: flex;
   flex-direction: column;
-  max-width: 80%;
-  padding: 16px 20px;
-  border-radius: 20px;
-  line-height: 1.43;
+  max-width: 75%;
+  padding: 12px 16px;
+  border-radius: 16px;
+  line-height: 1.5;
   font-size: 14px;
-  font-weight: 500;
+  word-wrap: break-word;
+  font-family: "Decathlon Text", Arial, sans-serif; /* Apply Decathlon font */
 }
 
 .userMessage {
   align-self: flex-end;
-  background-color: #ffcd4e;
-  color: #000000;
+  background-color: #ffd966;
+  color: #000;
+  text-align: left;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .botMessage {
   align-self: flex-start;
-  background-color: rgba(245, 244, 245, 1);
-  color: #000000;
+  background-color: #fff;
+  color: #333;
+  text-align: left;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  overflow-x: auto;
+  font-family: "Decathlon Text", Arial, sans-serif; /* Apply Decathlon font */
+}
+
+.botMessage table {
+  border-collapse: collapse;
+  margin: 1em 0;
+  min-width: 300px;
+  font-size: 0.9em;
+}
+
+.botMessage th,
+.botMessage td {
+  border: 1px solid #ddd;
+  padding: 8px 12px;
+  text-align: left;
+}
+
+.botMessage th {
+  background-color: rgba(255, 205, 78, 0.1);
+  font-weight: 600;
+}
+
+.botMessage tr:nth-child(even) {
+  background-color: rgba(255, 255, 255, 0.5);
+}
+
+.botMessage img {
+  max-width: 100px;
+  height: auto;
+  border-radius: 4px;
+  margin: 4px 0;
+}
+
+.botMessage p {
+  margin: 8px 0;
+  line-height: 1.5;
+}
+
+.botMessage strong {
+  font-weight: bold;
+}
+
+.botMessage h1,
+.botMessage h2,
+.botMessage h3 {
+  margin: 8px 0;
+  font-weight: bold;
+}
+
+.botMessage h1 {
+  font-size: 18px;
+}
+
+.botMessage h2 {
+  font-size: 16px;
+}
+
+.botMessage h3 {
+  font-size: 14px;
+}
+
+.botMessage ul {
+  margin: 8px 0;
+  padding-left: 20px;
+}
+
+.botMessage ul li {
+  list-style-type: disc;
+  margin-bottom: 4px;
 }
 
 .specialContent {
@@ -311,6 +386,75 @@
   z-index: 1000;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
   animation: pulse 1.5s infinite;
+}
+
+.chatContainer {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  max-width: 800px;
+  margin: 0 auto;
+  background-color: #f9f9f9;
+  border-radius: 8px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  font-family: "Decathlon Text", Arial, sans-serif; /* Apply Decathlon font */
+  overflow: visible;
+  flex-grow: 1;
+}
+
+.chatMessage {
+  margin-bottom: 12px;
+  line-height: 1.6;
+}
+
+.streamingText {
+  font-family: "Decathlon Text", Arial, sans-serif; /* Apply Decathlon font */
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+/* Markdown styles */
+.markdown {
+  font-family: "Decathlon Text", Arial, sans-serif;
+  line-height: 1.6;
+}
+
+.markdown h1, .markdown h2, .markdown h3 {
+  margin-top: 16px;
+  margin-bottom: 8px;
+}
+
+.markdown ul {
+  padding-left: 20px;
+}
+
+.markdown table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 16px 0;
+}
+
+.markdown th, .markdown td {
+  border: 1px solid #ddd;
+  padding: 8px;
+}
+
+.markdown th {
+  background-color: #f4f4f4;
+  font-weight: bold;
+}
+
+/* Add responsive design */
+@media (max-width: 768px) {
+  .chatContainer {
+    padding: 12px;
+  }
+
+  .message {
+    font-size: 13px;
+    padding: 10px 14px;
+  }
 }
 
 @keyframes pulse {

@@ -1,7 +1,8 @@
 # backend/main.py
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from backend.routes.chat import router as chat_router
+from backend.routes.stream import stream_handler
 import logging
 
 # Set up root logger to print to stdout
@@ -24,6 +25,10 @@ app.add_middleware(
 )
 
 app.include_router(chat_router)
+
+@app.post("/stream")
+async def handle_stream(request: Request):
+    return await stream_handler(request)
 
 # backend/routes/chat.py
 from fastapi import APIRouter, Request

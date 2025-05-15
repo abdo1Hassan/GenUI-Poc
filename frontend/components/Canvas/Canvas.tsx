@@ -6,47 +6,102 @@ import { useState, useEffect, useRef } from "react"
 import styles from "./Canvas.module.css"
 import SearchResults from "../SearchResults/SearchResults"
 import { useMobile } from "../../hooks/use-mobile"
+import ReactMarkdown from "react-markdown"
+import rehypeRaw from "rehype-raw"
+import remarkGfm from "remark-gfm"
+import { Typewriter } from 'react-simple-typewriter';
+
+interface ComparisonContent {
+  table: string;
+  comparison: string;
+  recommendation: string;
+}
 
 interface CanvasProps {
-  showSearchResults?: boolean
+  showSearchResults?: boolean;
 }
 
 interface Product {
-  id: string
-  title: string
-  brand: string
-  price: string
-  image: string
-  nature?: string // Add nature property for categorization
+  id: string;
+  title: string;
+  image: string;
+  price: string;
+  category: string;
+  brand: string;
+  nature: string;
+  url?: string;
+  capacity?: string;
 }
 
 export default function Canvas({ showSearchResults = false }: CanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [drawing, setDrawing] = useState(false)
   const [ctx, setCtx] = useState<CanvasRenderingContext2D | null>(null)
-  const [isResultsVisible, setIsResultsVisible] = useState(false)
+  const [isResultsVisible, setIsResultsVisible] = useState(showSearchResults)
   const [products, setProducts] = useState<Product[]>([])
+  const [comparisonContent, setComparisonContent] = useState<ComparisonContent | null>(null)
   const isMobile = useMobile()
 
-  // Listen for search events from Chat component
+  // Update visibility when prop changes
+  useEffect(() => {
+    setIsResultsVisible(showSearchResults)
+  }, [showSearchResults])
+
+  // Listen for events from Chat component
   useEffect(() => {
     const handleSearchEvent = (event: Event) => {
       const customEvent = event as CustomEvent
       if (customEvent.detail?.products) {
         setProducts(customEvent.detail.products)
+        setComparisonContent(null)
+        setIsResultsVisible(true) // Show search results when products are loaded
+      }
+    }
+
+    const handleSearchTrigger = (event: Event) => {
+      const customEvent = event as CustomEvent
+      if (customEvent.detail?.query) {
+        setIsResultsVisible(true)
+      }
+    }
+
+    const handleComparisonEvent = (event: Event) => {
+      const customEvent = event as CustomEvent
+      if (customEvent.detail?.comparison) {
+        setComparisonContent(customEvent.detail.comparison)
+        setIsResultsVisible(false)
+      }
+    }
+
+    const handleClearEvent = (event: Event) => {
+      const customEvent = event as CustomEvent
+      if (customEvent.detail?.intent) {
+        if (customEvent.detail.intent === "compare") {
+          setProducts([])
+          setIsResultsVisible(false)
+        } else if (customEvent.detail.intent === "find_product") {
+          setComparisonContent(null)
+          setIsResultsVisible(true)
+        } else {
+          setProducts([])
+          setComparisonContent(null)
+          setIsResultsVisible(false)
+        }
       }
     }
 
     window.addEventListener("productsLoaded", handleSearchEvent as EventListener)
+    window.addEventListener("searchTriggered", handleSearchTrigger as EventListener)
+    window.addEventListener("comparisonMade", handleComparisonEvent as EventListener)
+    window.addEventListener("clearContent", handleClearEvent as EventListener)
+    
     return () => {
       window.removeEventListener("productsLoaded", handleSearchEvent as EventListener)
+      window.removeEventListener("searchTriggered", handleSearchTrigger as EventListener)
+      window.removeEventListener("comparisonMade", handleComparisonEvent as EventListener)
+      window.removeEventListener("clearContent", handleClearEvent as EventListener)
     }
   }, [])
-
-  useEffect(() => {
-    // Set isResultsVisible based on showSearchResults prop
-    setIsResultsVisible(showSearchResults)
-  }, [showSearchResults])
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -123,8 +178,26 @@ export default function Canvas({ showSearchResults = false }: CanvasProps) {
   return (
     <div className={styles.container}>
       {isResultsVisible ? (
-        <div className={`${styles.searchResultsContainer} ${styles.slideIn}`}>
-          <SearchResults products={products} />
+        <SearchResults products={products} />
+      ) : comparisonContent ? (
+        <div className={styles.comparisonContainer}>
+          <div className={styles.comparisonTable}>
+            <div className={styles.tableWrapper}>
+              <ReactMarkdown remarkPlugins={[remarkGfm]}>{comparisonContent.table}</ReactMarkdown>
+            </div>
+          </div>
+          {comparisonContent.comparison && (
+            <div className={styles.comparisonText}>
+              <h3>Comparison</h3>
+              <ReactMarkdown remarkPlugins={[remarkGfm]}>{comparisonContent.comparison}</ReactMarkdown>
+            </div>
+          )}
+          {comparisonContent.recommendation && (
+            <div className={styles.recommendation}>
+              <h3>Recommendation</h3>
+              <ReactMarkdown remarkPlugins={[remarkGfm]}>{comparisonContent.recommendation}</ReactMarkdown>
+            </div>
+          )}
         </div>
       ) : (
         <canvas
@@ -140,5 +213,5 @@ export default function Canvas({ showSearchResults = false }: CanvasProps) {
         />
       )}
     </div>
-  )
+  );
 }

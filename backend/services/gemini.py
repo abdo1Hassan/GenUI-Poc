@@ -1,6 +1,8 @@
 # backend/services/gemini.py
 from vertexai.generative_models import GenerativeModel
 import logging
+import json
+import asyncio
 
 logger = logging.getLogger("main")
 model = GenerativeModel("gemini-2.0-flash-001")
@@ -41,20 +43,98 @@ def generate_response(query: str, products=None) -> str:
         if products:
             prompt = (
                 "You are a helpful sports retailer e-commerce assistant. "
-                "Stay on topic, introduce yourself when needed.\n"
+                "Stay on topic and be concise.\n"
                 f"User query: {query}\n"
                 f"Products (JSON): {products}\n"
-                "Compare the products in detail. For each product, show all available fields (such as title, brand, price, image, url, nature, etc) in a markdown table, with one row per field and one column per product. After the table, provide a short comparison message and a small recommendation."
+                "Compare the products and return a response in strict JSON format with these exact fields:\n"
+                "- table: A markdown table comparing products\n"
+                "- comparison: A brief text comparing key differences\n"
+                "- recommendation: A clear recommendation\n"
+                "\nYour response must be parseable JSON. Do not include markdown code blocks or any text outside the JSON structure.\n"
+                "Example format:\n"
+                '{\n'
+                '  "table": "| Feature | Product A | Product B |\\n|---|---|---|\\n|...",\n'
+                '  "comparison": "Product A is...",\n'
+                '  "recommendation": "Choose Product A if..."\n'
+                '}'
             )
             logger.info(f"🔍 Comparison prompt: {prompt}")
+            
+            # Get the raw response
+            response = model.generate_content(prompt)
+            text = response.text.strip()
+            logger.info(f"✨ Raw Gemini response: {text}")
+            
+            # Remove any markdown code block syntax if present
+            text = text.replace("```json", "").replace("```", "").strip()
+            
+            try:
+                # Validate JSON by parsing and re-stringifying
+                parsed = json.loads(text)
+                return json.dumps(parsed)
+            except json.JSONDecodeError as e:
+                logger.error(f"Failed to parse JSON: {e}")
+                # If not valid JSON, return a structured error response
+                return json.dumps({
+                    "table": "Error: Could not generate comparison",
+                    "comparison": f"Error parsing response: {str(e)}",
+                    "recommendation": "Please try again"
+                })
         else:
             prompt = (
-                "You are a helpful sports retailer ecom assistant, stay on topic, introduce yourself when needed. Respond to: "
+                "You are a helpful sports retailer ecom assistant, stay on topic, introduce yourself only when needed. Respond to: "
                 f"{query}"
             )
-        response = model.generate_content(prompt)
-        logger.info(f"✨ Raw Gemini response: {response.text}")
-        return response.text.strip()
+            response = model.generate_content(prompt)
+            return response.text.strip()
+            
     except Exception as e:
-        logger.error(f"❌ Gemini response failed: {e}")
-        return "Sorry, I'm having trouble responding."
+        logger.error(f"❌ Gemini response generation failed: {e}")
+        return json.dumps({
+            "table": "Error: Failed to generate comparison",
+            "comparison": f"Error: {str(e)}",
+            "recommendation": "Please try again"
+        })
+
+async def generate_stream_response(query: str, products=None):
+    try:
+        if products:
+            prompt = (
+                "You are a helpful sports retailer e-commerce assistant. "
+                "Stay on topic and be concise.\n"
+                f"User query: {query}\n"
+                f"Products (JSON): {products}\n"
+                "Compare the products and provide a response with these sections:\n"
+                "1. A markdown comparison table\n"
+                "2. Key differences summary\n"
+                "3. Clear recommendation\n"
+                "\nStart each section with these exact tags:\n"
+                "[TABLE]\n"
+                "[COMPARISON]\n"
+                "[RECOMMENDATION]\n"
+                "\nExample format:\n"
+                "[TABLE]\n| Feature | Product A | Product B |\n|---|---|---|\n"
+                "[COMPARISON]\nProduct A is...\n"
+                "[RECOMMENDATION]\nChoose Product A if..."
+            )
+            
+            logger.info(f"🔍 Streaming comparison prompt: {prompt}")
+            
+            response = model.generate_content(prompt, stream=True)
+            async for chunk in response:
+                if hasattr(chunk, 'text') and chunk.text:
+                    yield chunk.text
+
+        else:
+            prompt = (
+                "You are a helpful sports retailer ecom assistant. Respond to: "
+                f"{query}"
+            )
+            response = model.generate_content(prompt, stream=True)
+            async for chunk in response:
+                if hasattr(chunk, 'text') and chunk.text:
+                    yield chunk.text
+            
+    except Exception as e:
+        logger.error(f"❌ Gemini streaming response failed: {e}")
+        yield "[ERROR] Failed to generate streaming response"
