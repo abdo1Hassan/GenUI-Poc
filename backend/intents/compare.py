@@ -1,13 +1,14 @@
 # backend/intents/compare.py
 from backend.services.gemini import generate_response
+import logging
 
-async def handle_compare(query: str, intent: str):
-    response = generate_response(query)
-    return {"result": response, "products": [], "intent": intent}
+logger = logging.getLogger("main")
+async def handle_compare(query: str, intent: str, products=None):
+    logger.info(f"📦 Processing comparison request")
+    logger.info(f"Query: {query}")
+    logger.info(f"Products: {products}")
+    
+    response = generate_response(query, products)
+    logger.info(f"💡 Final comparison response: {response}")
 
-# backend/intents/reassure.py
-from backend.services.gemini import generate_response
-
-async def handle_reassure(query: str, intent: str):
-    response = generate_response(query)
-    return {"result": response, "products": [], "intent": intent}
+    return {"result": response, "products": products or [], "intent": intent}

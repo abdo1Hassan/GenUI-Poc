@@ -395,8 +395,8 @@ const SearchResults: React.FC<SearchResultsProps> = ({ products }) => {
             </span>
           </div>
 
-          {/* Product list: one column, each card full width */}
-          <div style={{ width: "100%", display: "flex", flexDirection: "column", gap: 16, marginTop: 64 }}>
+          {/* Product list: one column, each card full width, horizontal bar style */}
+          <div style={{ width: "100%", display: "flex", flexDirection: "column", gap: 10, marginTop: 64 }}>
             {filteredProducts.map((product, index) => {
               const isSelected = selectedProducts.some(p => p.id === product.id)
               const key = product.id ? String(product.id) : `product-${index}`
@@ -404,7 +404,18 @@ const SearchResults: React.FC<SearchResultsProps> = ({ products }) => {
                 <div
                   key={key}
                   className={styles.productCard + (isSelected ? ' ' + styles.selected : '')}
-                  style={{ width: "100%", maxWidth: 400, margin: "0 auto" }}
+                  style={{
+                    width: "100%",
+                    maxWidth: 400,
+                    margin: "0 auto",
+                    minHeight: 56,
+                    height: 56,
+                    display: "flex",
+                    flexDirection: "row",
+                    alignItems: "center",
+                    padding: "0 12px",
+                    boxSizing: "border-box",
+                  }}
                   draggable={true}
                   onMouseDown={e => ensureProductSelected(product)}
                   onTouchStart={e => { ensureProductSelected(product); handleTouchStart(product, e) }}
@@ -416,11 +427,11 @@ const SearchResults: React.FC<SearchResultsProps> = ({ products }) => {
                   <img
                     src={product.image || "/placeholder.svg"}
                     alt={product.title}
-                    className={styles.productImage}
+                    style={{ width: 40, height: 40, borderRadius: 8, objectFit: "cover", marginRight: 16, border: "2px solid #ffcd4e", background: "#f5f4f5" }}
                   />
-                  <div className={styles.productInfo}>
-                    <div className={styles.productTitle}>{product.title}</div>
-                    <div className={styles.productPrice}>€{product.price}</div>
+                  <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", justifyContent: "center", flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 14, fontWeight: 600, color: "#181818", lineHeight: 1.2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: "100%" }}>{product.title}</div>
+                    <div style={{ fontSize: 12, color: "#616161", fontWeight: 600, background: "#fffae3", borderRadius: 6, padding: "1px 7px", marginTop: 2 }}>{`€${product.price}`}</div>
                   </div>
                   {isSelected && (
                     <div style={{position: 'absolute', top: 6, right: 6, background: '#ffcd4e', borderRadius: '50%', width: 18, height: 18, display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 1px 4px rgba(0,0,0,0.08)'}}>

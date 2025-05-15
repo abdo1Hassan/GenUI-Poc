@@ -10,5 +10,6 @@ router = APIRouter()
 async def chat_handler(request: Request):
     body = await request.json()
     query = body.get("query", "").lower()
+    products = body.get("products", [])
     logger.info(f"📩 Incoming query: {query}")
-    return await route_intent(query)
+    return await route_intent(query, products)

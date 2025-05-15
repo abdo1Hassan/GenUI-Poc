@@ -36,11 +36,24 @@ Respond with one intent label only.
         logger.error(f"❌ Gemini intent detection failed: {e}")
         return "chitchat"
 
-def generate_response(query: str) -> str:
+def generate_response(query: str, products=None) -> str:
     try:
-        response = model.generate_content(
-            f"You are a helpful a sports retailer ecom assistant, stay on topic, introduce yourself when needed. Respond to: {query}"
-        )
+        if products:
+            prompt = (
+                "You are a helpful sports retailer e-commerce assistant. "
+                "Stay on topic, introduce yourself when needed.\n"
+                f"User query: {query}\n"
+                f"Products (JSON): {products}\n"
+                "Compare the products in detail. For each product, show all available fields (such as title, brand, price, image, url, nature, etc) in a markdown table, with one row per field and one column per product. After the table, provide a short comparison message and a small recommendation."
+            )
+            logger.info(f"🔍 Comparison prompt: {prompt}")
+        else:
+            prompt = (
+                "You are a helpful sports retailer ecom assistant, stay on topic, introduce yourself when needed. Respond to: "
+                f"{query}"
+            )
+        response = model.generate_content(prompt)
+        logger.info(f"✨ Raw Gemini response: {response.text}")
         return response.text.strip()
     except Exception as e:
         logger.error(f"❌ Gemini response failed: {e}")

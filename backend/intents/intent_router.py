@@ -5,12 +5,12 @@ from backend.intents.chitchat import handle_chitchat
 from backend.intents.compare import handle_compare
 from backend.intents.reassure import handle_reassure
 
-async def route_intent(query: str):
+async def route_intent(query: str, products=None):
     intent = detect_intent(query)
     if intent == "find_product":
         return await handle_find_product(query, intent)
     elif intent == "compare":
-        return await handle_compare(query, intent)
+        return await handle_compare(query, intent, products)
     elif intent == "reassure":
         return await handle_reassure(query, intent)
     else:

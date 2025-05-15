@@ -132,13 +132,13 @@ export default function Chat({ onMessageSent }: ChatProps) {
     e.preventDefault()
     if (!inputValue.trim() && productTags.length === 0) return
 
-    // Combine input value with product tags
-    const fullQuery = `${inputValue} ${productTags.map((tag) => tag.title).join(" ")}`.trim()
-
+    // Pass the whole product objects as a separate field
+    const fullQuery = inputValue.trim()
     const userMessage: MessageWithContent = {
       id: Date.now().toString(),
       text: fullQuery,
       sender: "user",
+      specialContent: productTags.length > 0 ? { type: "products", query: JSON.stringify(productTags) } : undefined,
     }
 
     setMessages((prev) => [...prev, userMessage])
@@ -147,7 +147,7 @@ export default function Chat({ onMessageSent }: ChatProps) {
 
     // Emit event that user sent a message
     const userMessageEvent = new CustomEvent("userMessageSent", {
-      detail: { message: fullQuery },
+      detail: { message: fullQuery, products: productTags },
     })
     window.dispatchEvent(userMessageEvent)
 
@@ -170,7 +170,7 @@ export default function Chat({ onMessageSent }: ChatProps) {
       // Trigger search results in Canvas component via custom event after a delay
       setTimeout(() => {
         const searchEvent = new CustomEvent("searchTriggered", {
-          detail: { query: fullQuery },
+          detail: { query: fullQuery, products: productTags },
         })
         window.dispatchEvent(searchEvent as Event)
       }, 2500)
@@ -181,7 +181,7 @@ export default function Chat({ onMessageSent }: ChatProps) {
       const res = await fetch("http://localhost:8182/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ query: fullQuery }),
+        body: JSON.stringify({ query: fullQuery, products: productTags }),
       }).catch(() => {
         // Mock response if API is not available
         return {
@@ -189,44 +189,7 @@ export default function Chat({ onMessageSent }: ChatProps) {
           json: async () => ({
             intent: lowerCaseInput.includes("compare") ? "compare" : "search",
             result: `Here are some results for "${fullQuery}"`,
-            products: [
-              {
-                id: "1",
-                title: "Camping Tent",
-                brand: "Outdoor Brand",
-                price: "$149.99",
-                image: "/camping-tent.png",
-                url: "/camping-tent",
-                nature: "Camping essentials",
-              },
-              {
-                id: "2",
-                title: "Water Bottle",
-                brand: "Hydro Brand",
-                price: "$24.99",
-                image: "/reusable-water-bottle.png",
-                url: "/water-bottle",
-                nature: "Water activities",
-              },
-              {
-                id: "3",
-                title: "Sleeping Bag",
-                brand: "Comfort Brand",
-                price: "$89.99",
-                image: "/placeholder.svg?key=fih1r",
-                url: "/sleeping-bag",
-                nature: "Camping essentials",
-              },
-              {
-                id: "4",
-                title: "Kayak",
-                brand: "Water Brand",
-                price: "$499.99",
-                image: "/placeholder.svg?key=41hb2",
-                url: "/kayak",
-                nature: "Kayaking",
-              },
-            ],
+            products: productTags,
           }),
         }
       })
@@ -264,12 +227,11 @@ export default function Chat({ onMessageSent }: ChatProps) {
 
       // Handle response based on intent
       if (data.intent === "compare") {
-        const compareText = `Comparing ${productTags.map((tag) => tag.title).join(" vs ")}`
         setMessages((prev) => [
           ...prev,
           {
             id: (Date.now() + 1).toString(),
-            text: compareText,
+            text: data.result,
             sender: "bot",
             specialContent: {
               type: "products",
